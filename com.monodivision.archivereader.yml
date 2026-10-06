@@ -154,8 +154,8 @@ modules:
     sources:
       - type: archive
         # url and sha256 are rewritten by linux/packaging/build_release.sh.
-        url: https://github.com/boblothian/archivist-browser/releases/download/v1.4.0/archivist-browser-1.4.0-linux-x86_64.tar.gz
-        sha256: 3c47edb7a7c9dcdb49fec7a990cddc239fc7d76ee397c964b9f6902eb7b8b0f1
+        url: https://github.com/boblothian/archivist-browser/releases/download/v1.4.1/archivist-browser-1.4.1-linux-x86_64.tar.gz
+        sha256: 303528faafc2cee8170d3f7bc1d1157ea2a6ab47a13772bc525c0f96b38fc3df
         only-arches:
           - x86_64
         x-checker-data:
