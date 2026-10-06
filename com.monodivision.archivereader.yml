@@ -1,0 +1,165 @@
+# Flathub manifest for Archivist Browser.
+#
+# app-id stays com.monodivision.archivereader (the GTK application ID, and the
+# name of the folder installs keep their data in); the program is called
+# archivist-browser and everything user-facing says "Archivist Browser".
+#
+# Archivist Browser is closed source, so the app itself is a prebuilt Flutter
+# bundle: linux/packaging/build_release.sh produces the archive below and
+# updates its url/sha256, and it is published on the GitHub Releases page of
+# the public boblothian/archivist-browser repository. Everything else is
+# built from source here.
+#
+# libmpv (media_kit's playback engine) is built against this runtime. The
+# full FFmpeg codec set (H.264, H.265, ...) comes from the runtime's
+# codecs-extra extension, which Flatpak installs along with the runtime, so
+# the manifest doesn't declare it. (It replaced the ffmpeg-full extension in
+# freedesktop-sdk 25.08, which GNOME 50 is built on.) The libmpv module below
+# is the one Spotube (com.github.KRTirtho.Spotube), another Flutter +
+# media_kit app, builds on Flathub on the same runtime, so its sources and
+# checksums are known-good.
+
+app-id: com.monodivision.archivereader
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: archivist-browser
+separate-locales: false
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --socket=pulseaudio
+  - --share=network
+  # Steam Deck (and other) game controllers are read from /dev/input by
+  # lib/responsive/gamepad_input.dart: GTK never passes gamepad input to
+  # Flutter. Flatpak versions without the "input" device class fall back to
+  # all devices.
+  - --device=input
+  - --device-if=all:!has-input-device
+  # flutter_secure_storage keeps credentials in the desktop keyring.
+  - --talk-name=org.freedesktop.secrets
+  # wakelock_plus keeps the screen on during playback.
+  - --talk-name=org.freedesktop.ScreenSaver
+  # connectivity_plus: online/offline state (the "archive.org unreachable"
+  # banner).
+  - --system-talk-name=org.freedesktop.NetworkManager
+
+modules:
+  # Built as LGPL (-Dgpl=false). mpv defaults to GPL, and a GPL libmpv in
+  # the same package as a closed-source app is a licence problem; LGPL
+  # allows it, since the app only links to it dynamically. LGPL mode drops
+  # mpv's own X11/Xv video outputs, VDPAU and DVD/CD support, none of which
+  # media_kit uses: it draws through libmpv's render API.
+  # license-files puts each library's licence in /app/share/licenses with
+  # the app's own, as LGPL requires.
+  - name: libmpv
+    license-files:
+      - LICENSE.LGPL
+      - Copyright
+    cleanup:
+      - /share/bash-completion
+      - /share/zsh
+      - /share/doc
+      - /share/icons
+      - /share/applications
+    buildsystem: meson
+    config-opts:
+      - -Dgpl=false
+      - -Dlibmpv=true
+      - -Dcplayer=false
+      - -Dlua=disabled
+      - -Ddebug=false
+      - -Dbuild-date=false
+      - -Dalsa=disabled
+      - -Dmanpage-build=disabled
+      - -Dvulkan=enabled
+    sources:
+      - type: archive
+        url: https://github.com/mpv-player/mpv/archive/refs/tags/v0.40.0.tar.gz
+        sha256: 10a0f4654f62140a6dd4d380dcf0bbdbdcf6e697556863dc499c296182f081a3
+        x-checker-data:
+          type: anitya
+          project-id: 5348
+          stable-only: true
+          url-template: https://github.com/mpv-player/mpv/archive/refs/tags/v$version.tar.gz
+    modules:
+      - name: libplacebo
+        license-files:
+          - LICENSE
+        buildsystem: meson
+        config-opts:
+          - -Dopengl=enabled
+          - -Dvulkan=enabled
+          - -Dglslang=disabled
+          - -Dd3d11=disabled
+          - -Ddemos=False
+        sources:
+          - type: archive
+            url: https://code.videolan.org/videolan/libplacebo/-/archive/v7.360.1/libplacebo-v7.360.1.tar.gz
+            sha256: 14c0a99f4b01557ec9826ce6b1d52f6de21be274ba03fd5aab7307f18766dc39
+            x-checker-data:
+              type: anitya
+              project-id: 20101
+              stable-only: true
+              url-template: https://code.videolan.org/videolan/libplacebo/-/archive/v$version/libplacebo-v$version.tar.gz
+          - type: archive
+            url: https://github.com/pallets/jinja/archive/refs/tags/3.1.6.tar.gz
+            sha256: 2074b22a72caa65474902234b320d73463d6d4c223ee49f4b433495758356337
+            dest: 3rdparty/jinja
+            x-checker-data:
+              type: anitya
+              project-id: 3894
+              url-template: https://github.com/pallets/jinja/archive/refs/tags/$version.tar.gz
+          - type: archive
+            url: https://github.com/Dav1dde/glad/archive/refs/tags/v2.0.8.tar.gz
+            sha256: 44f06f9195427c7017f5028d0894f57eb216b0a8f7c4eda7ce883732aeb2d0fc
+            dest: 3rdparty/glad
+            x-checker-data:
+              type: anitya
+              project-id: 300234
+              url-template: https://github.com/Dav1dde/glad/archive/refs/tags/v$version.tar.gz
+
+      - name: libass
+        license-files:
+          - COPYING
+        config-opts:
+          - --disable-static
+        sources:
+          - type: archive
+            url: https://github.com/libass/libass/releases/download/0.17.3/libass-0.17.3.tar.gz
+            sha256: da7c348deb6fa6c24507afab2dee7545ba5dd5bbf90a137bfe9e738f7df68537
+            x-checker-data:
+              type: anitya
+              project-id: 1560
+              stable-only: true
+              url-template: https://github.com/libass/libass/releases/download/$version/libass-$version.tar.gz
+
+  - name: archivist-browser
+    buildsystem: simple
+    build-commands:
+      # The Flutter bundle is laid out at the root of /app, so its lib/ is
+      # /app/lib: the runner's $ORIGIN/lib RUNPATH, plugins that dlopen() a
+      # bare library name (pdfium) and libmpv above all resolve from one place,
+      # with no launcher script or LD_LIBRARY_PATH.
+      - install -Dm755 archivist-browser ${FLATPAK_DEST}/archivist-browser
+      - mkdir -p ${FLATPAK_DEST}/lib ${FLATPAK_DEST}/bin ${FLATPAK_DEST}/share
+      - cp -a lib/. ${FLATPAK_DEST}/lib/
+      - cp -a data ${FLATPAK_DEST}/
+      - ln -s ../archivist-browser ${FLATPAK_DEST}/bin/archivist-browser
+      # Desktop entry, MetaInfo, icons and licence, from linux/packaging/.
+      - cp -a share/. ${FLATPAK_DEST}/share/
+    sources:
+      - type: archive
+        # url and sha256 are rewritten by linux/packaging/build_release.sh.
+        url: https://github.com/boblothian/archivist-browser/releases/download/v1.4.0/archivist-browser-1.4.0-linux-x86_64.tar.gz
+        sha256: 3c47edb7a7c9dcdb49fec7a990cddc239fc7d76ee397c964b9f6902eb7b8b0f1
+        only-arches:
+          - x86_64
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/boblothian/archivist-browser/releases/latest
+          version-query: .tag_name | sub("^v"; "")
+          url-query: .assets[] | select(.name | endswith("-linux-x86_64.tar.gz")) | .browser_download_url
